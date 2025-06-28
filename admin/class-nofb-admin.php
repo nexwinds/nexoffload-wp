@@ -131,6 +131,7 @@ class NOFB_Admin {
         // Make sure we have dashicons
         wp_enqueue_style('dashicons');
         
+        // Enqueue main admin CSS
         wp_enqueue_style(
             'nofb-admin-style',
             NOFB_PLUGIN_URL . 'assets/css/admin.css',
@@ -138,6 +139,17 @@ class NOFB_Admin {
             NOFB_VERSION
         );
         
+        // Enqueue media library CSS if needed
+        if (strpos($hook, 'nexoffload-for-bunny-manager') !== false) {
+            wp_enqueue_style(
+                'nofb-media-library-style',
+                NOFB_PLUGIN_URL . 'assets/css/media-library.css',
+                array('nofb-admin-style'),
+                NOFB_VERSION
+            );
+        }
+        
+        // Enqueue main admin JS
         wp_enqueue_script(
             'nofb-admin-script',
             NOFB_PLUGIN_URL . 'assets/js/admin.js',
@@ -146,14 +158,419 @@ class NOFB_Admin {
             true
         );
         
-        wp_localize_script('nofb-admin-script', 'nofb_params', array(
+        // Common localized script data
+        $script_data = array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('nofb_nonce'),
             'processing' => __('Processing...', 'nexoffload-for-bunny'),
             'complete' => __('Complete!', 'nexoffload-for-bunny'),
             'error' => __('An error occurred.', 'nexoffload-for-bunny'),
             'confirmClear' => __('Are you sure you want to clear the queue?', 'nexoffload-for-bunny')
-        ));
+        );
+        
+        // Localize the main script
+        wp_localize_script('nofb-admin-script', 'nofb_params', $script_data);
+        
+        // Media Manager specific scripts
+        if (strpos($hook, 'nexoffload-for-bunny-manager') !== false) {
+            // Add specific media manager scripts here if needed
+            wp_add_inline_script('nofb-admin-script', '
+                jQuery(document).ready(function($) {
+                    // Initialize optimization and migration processes
+                    
+                    // Make sure the script is loaded
+                    if (typeof nofb_params === "undefined") {
+                        console.error("Bunny Media Offload: JavaScript parameters not loaded correctly.");
+                        return;
+                    }
+                    
+                    // Load recent data on page load
+                    if ($("#nofb-recent-optimizations").length) {
+                        refreshRecentOptimizations();
+                    }
+                    
+                    if ($("#nofb-recent-migrations").length) {
+                        refreshRecentMigrations();
+                    }
+                    
+                    // Optimization button handlers
+                    $("#nofb-optimize-all").on("click", function() {
+                        const $button = $(this);
+                        const $stopButton = $("#nofb-stop-optimization");
+                        
+                        $button.prop("disabled", true);
+                        $stopButton.prop("disabled", false);
+                        
+                        // Clear log container
+                        const $log = $("#nofb-optimization-log .nofb-log");
+                        $log.empty();
+                        
+                        startOptimization();
+                    });
+                    
+                    $("#nofb-stop-optimization").on("click", function() {
+                        const $button = $(this);
+                        $button.prop("disabled", true);
+                        
+                        window.nofbStopOptimization = true;
+                        
+                        const $log = $("#nofb-optimization-log .nofb-log");
+                        $log.append("<p>" + getCurrentTime() + " Stopping optimization after current batch completes...</p>");
+                    });
+                    
+                    $("#nofb-reinitialize-optimization-queue").on("click", function() {
+                        if (!confirm("Are you sure you want to reinitialize the optimization queue? This will scan your media library again.")) {
+                            return;
+                        }
+                        
+                        const $button = $(this);
+                        $button.prop("disabled", true);
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_reinitialize_queue",
+                                queue_type: "optimization",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    location.reload();
+                                } else {
+                                    alert("Error: " + response.data.message);
+                                }
+                                $button.prop("disabled", false);
+                            },
+                            error: function() {
+                                alert("An error occurred while reinitializing the queue.");
+                                $button.prop("disabled", false);
+                            }
+                        });
+                    });
+                    
+                    // Migration button handlers
+                    $("#nofb-migrate-all").on("click", function() {
+                        const $button = $(this);
+                        const $stopButton = $("#nofb-stop-migration");
+                        
+                        $button.prop("disabled", true);
+                        $stopButton.prop("disabled", false);
+                        
+                        // Clear log container
+                        const $log = $("#nofb-migration-log .nofb-log");
+                        $log.empty();
+                        
+                        startMigration();
+                    });
+                    
+                    $("#nofb-stop-migration").on("click", function() {
+                        const $button = $(this);
+                        $button.prop("disabled", true);
+                        
+                        window.nofbStopMigration = true;
+                        
+                        const $log = $("#nofb-migration-log .nofb-log");
+                        $log.append("<p>" + getCurrentTime() + " Stopping migration after current batch completes...</p>");
+                    });
+                    
+                    $("#nofb-reinitialize-migration-queue").on("click", function() {
+                        if (!confirm("Are you sure you want to reinitialize the migration queue? This will scan your media library again.")) {
+                            return;
+                        }
+                        
+                        const $button = $(this);
+                        $button.prop("disabled", true);
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_reinitialize_queue",
+                                queue_type: "migration",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    location.reload();
+                                } else {
+                                    alert("Error: " + response.data.message);
+                                }
+                                $button.prop("disabled", false);
+                            },
+                            error: function() {
+                                alert("An error occurred while reinitializing the queue.");
+                                $button.prop("disabled", false);
+                            }
+                        });
+                    });
+                    
+                    // Auto-optimization toggle handler
+                    $("#nofb-auto-optimize-toggle").on("change", function() {
+                        const $checkbox = $(this);
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_toggle_auto_optimize",
+                                enabled: $checkbox.is(":checked") ? 1 : 0,
+                                nonce: nofb_params.nonce
+                            }
+                        });
+                    });
+                    
+                    // Helper function to get current time
+                    function getCurrentTime() {
+                        var now = new Date();
+                        var hours = now.getHours().toString().padStart(2, "0");
+                        var minutes = now.getMinutes().toString().padStart(2, "0");
+                        var seconds = now.getSeconds().toString().padStart(2, "0");
+                        return "[" + hours + ":" + minutes + ":" + seconds + "]";
+                    }
+                    
+                    // Helper function to update progress
+                    function updateProgress(progress, total) {
+                        var percent = total > 0 ? Math.round((progress / total) * 100) : 0;
+                        $(".nofb-progress").css("width", percent + "%");
+                        $(".nofb-progress-container label").text("Optimization Progress: " + progress + " / " + total + " eligible files");
+                    }
+                    
+                    // Helper function to update migration progress
+                    function updateMigrationProgress(progress, total) {
+                        var percent = total > 0 ? Math.round((progress / total) * 100) : 0;
+                        $(".nofb-progress").css("width", percent + "%");
+                        $(".nofb-progress-container label").text("Migration Progress: " + progress + " / " + total + " eligible files");
+                    }
+                    
+                    // Function to start the optimization process
+                    function startOptimization() {
+                        window.nofbStopOptimization = false;
+                        window.nofbOptimizationCount = 0;
+                        window.nofbTotalOptimization = parseInt($(".nofb-progress-container label").text().match(/\\d+\\s\\/\\s(\\d+)/)[1]);
+                        
+                        optimizeBatch();
+                    }
+                    
+                    // Function to optimize a batch of files
+                    function optimizeBatch() {
+                        if (window.nofbStopOptimization) {
+                            $("#nofb-optimize-all").prop("disabled", false);
+                            $("#nofb-stop-optimization").prop("disabled", true);
+                            return;
+                        }
+                        
+                        const $log = $("#nofb-optimization-log .nofb-log");
+                        $log.append("<p>" + getCurrentTime() + " Processing optimization batch...</p>");
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_optimize_batch",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    // Update log and progress
+                                    const results = response.data.results;
+                                    window.nofbOptimizationCount += results.length;
+                                    
+                                    for (const result of results) {
+                                        let logEntry = getCurrentTime() + " ";
+                                        
+                                        if (result.success) {
+                                            logEntry += "Optimized: " + result.filename;
+                                            if (result.original_size && result.optimized_size) {
+                                                const savings = Math.round(100 - (result.optimized_size / result.original_size * 100));
+                                                logEntry += " (" + savings + "% reduction)";
+                                            }
+                                        } else {
+                                            logEntry += "Failed: " + result.filename + " - " + result.error;
+                                        }
+                                        
+                                        $log.append("<p>" + logEntry + "</p>");
+                                    }
+                                    
+                                    // Auto-scroll to bottom
+                                    $log.scrollTop($log[0].scrollHeight);
+                                    
+                                    // Update progress
+                                    updateProgress(window.nofbOptimizationCount, window.nofbTotalOptimization);
+                                    
+                                    // Continue if there are more files to process
+                                    if (response.data.remaining > 0 && !window.nofbStopOptimization) {
+                                        setTimeout(optimizeBatch, 1000); // Short delay to avoid overwhelming the server
+                                    } else {
+                                        // Optimization complete or stopped
+                                        $log.append("<p>" + getCurrentTime() + " Optimization " + (window.nofbStopOptimization ? "stopped." : "complete!") + "</p>");
+                                        $("#nofb-optimize-all").prop("disabled", false);
+                                        $("#nofb-stop-optimization").prop("disabled", true);
+                                        
+                                        // Refresh the recent optimizations list
+                                        refreshRecentOptimizations();
+                                        
+                                        // Reload the page to get updated counts
+                                        setTimeout(function() {
+                                            location.reload();
+                                        }, 2000);
+                                    }
+                                } else {
+                                    // Error handling
+                                    $log.append("<p>" + getCurrentTime() + " Error: " + response.data.message + "</p>");
+                                    $("#nofb-optimize-all").prop("disabled", false);
+                                    $("#nofb-stop-optimization").prop("disabled", true);
+                                }
+                            },
+                            error: function() {
+                                $log.append("<p>" + getCurrentTime() + " Error: Connection failed.</p>");
+                                $("#nofb-optimize-all").prop("disabled", false);
+                                $("#nofb-stop-optimization").prop("disabled", true);
+                            }
+                        });
+                    }
+                    
+                    // Function to start the migration process
+                    function startMigration() {
+                        window.nofbStopMigration = false;
+                        window.nofbMigrationCount = 0;
+                        window.nofbTotalMigration = parseInt($(".nofb-progress-container label").text().match(/\\d+\\s\\/\\s(\\d+)/)[1]);
+                        
+                        migrateBatch();
+                    }
+                    
+                    // Function to migrate a batch of files
+                    function migrateBatch() {
+                        if (window.nofbStopMigration) {
+                            $("#nofb-migrate-all").prop("disabled", false);
+                            $("#nofb-stop-migration").prop("disabled", true);
+                            return;
+                        }
+                        
+                        const $log = $("#nofb-migration-log .nofb-log");
+                        $log.append("<p>" + getCurrentTime() + " Processing migration batch...</p>");
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_migrate_batch",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    // Update log and progress
+                                    const results = response.data.results;
+                                    window.nofbMigrationCount += results.length;
+                                    
+                                    for (const result of results) {
+                                        let logEntry = getCurrentTime() + " ";
+                                        
+                                        if (result.success) {
+                                            logEntry += "Migrated: " + result.filename + " to " + result.bunny_url;
+                                        } else {
+                                            logEntry += "Failed: " + result.filename + " - " + result.error;
+                                        }
+                                        
+                                        $log.append("<p>" + logEntry + "</p>");
+                                    }
+                                    
+                                    // Auto-scroll to bottom
+                                    $log.scrollTop($log[0].scrollHeight);
+                                    
+                                    // Update progress
+                                    updateMigrationProgress(window.nofbMigrationCount, window.nofbTotalMigration);
+                                    
+                                    // Continue if there are more files to process
+                                    if (response.data.remaining > 0 && !window.nofbStopMigration) {
+                                        setTimeout(migrateBatch, 1000); // Short delay to avoid overwhelming the server
+                                    } else {
+                                        // Migration complete or stopped
+                                        $log.append("<p>" + getCurrentTime() + " Migration " + (window.nofbStopMigration ? "stopped." : "complete!") + "</p>");
+                                        $("#nofb-migrate-all").prop("disabled", false);
+                                        $("#nofb-stop-migration").prop("disabled", true);
+                                        
+                                        // Refresh the recent migrations list
+                                        refreshRecentMigrations();
+                                        
+                                        // Reload the page to get updated counts
+                                        setTimeout(function() {
+                                            location.reload();
+                                        }, 2000);
+                                    }
+                                } else {
+                                    // Error handling
+                                    $log.append("<p>" + getCurrentTime() + " Error: " + response.data.message + "</p>");
+                                    $("#nofb-migrate-all").prop("disabled", false);
+                                    $("#nofb-stop-migration").prop("disabled", true);
+                                }
+                            },
+                            error: function() {
+                                $log.append("<p>" + getCurrentTime() + " Error: Connection failed.</p>");
+                                $("#nofb-migrate-all").prop("disabled", false);
+                                $("#nofb-stop-migration").prop("disabled", true);
+                            }
+                        });
+                    }
+                    
+                    // Helper function to refresh recent optimizations
+                    function refreshRecentOptimizations() {
+                        var container = $("#nofb-recent-optimizations");
+                        
+                        if (container.length === 0) {
+                            return;
+                        }
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_get_recent_optimizations",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success && response.data.html) {
+                                    container.html(response.data.html);
+                                } else {
+                                    container.html("<tr><td colspan=\"6\">No recent optimizations found.</td></tr>");
+                                }
+                            },
+                            error: function() {
+                                container.html("<tr><td colspan=\"6\">Failed to load recent optimizations.</td></tr>");
+                            }
+                        });
+                    }
+                    
+                    // Helper function to refresh recent migrations
+                    function refreshRecentMigrations() {
+                        var container = $("#nofb-recent-migrations");
+                        
+                        if (container.length === 0) {
+                            return;
+                        }
+                        
+                        $.ajax({
+                            url: nofb_params.ajax_url,
+                            type: "POST",
+                            data: {
+                                action: "nofb_get_recent_migrations",
+                                nonce: nofb_params.nonce
+                            },
+                            success: function(response) {
+                                if (response.success && response.data.html) {
+                                    container.html(response.data.html);
+                                } else {
+                                    container.html("<tr><td colspan=\"6\">No recent migrations found.</td></tr>");
+                                }
+                            },
+                            error: function() {
+                                container.html("<tr><td colspan=\"6\">Failed to load recent migrations.</td></tr>");
+                            }
+                        });
+                    }
+                });
+            ');
+        }
     }
     
     /**

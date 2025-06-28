@@ -6,7 +6,7 @@
  * Plugin URI: https://nexoffload.nexwinds.com
  * Description: Seamlessly optimize and offload WordPress media to Bunny.net Edge Storage for blazing-fast delivery and lighter server load.
  * Version: 1.0.0
- * Author: Nexwinds
+ * Author: diogoc,Nexwinds
  * Author URI: https://nexwinds.com
  * License: GPLv3
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
