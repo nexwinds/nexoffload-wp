@@ -39,9 +39,6 @@ if (isset($_GET['tab'])) {
     <?php
     if ($active_tab === 'api'):
         // Check for constants defined in wp-config.php
-        $api_key_defined = defined('BUNNY_API_KEY') && !empty(BUNNY_API_KEY);
-        $storage_zone_defined = defined('BUNNY_STORAGE_ZONE') && !empty(BUNNY_STORAGE_ZONE);
-        $hostname_defined = defined('BUNNY_CUSTOM_HOSTNAME') && !empty(BUNNY_CUSTOM_HOSTNAME);
         $NOFB_API_KEY_defined = defined('NOFB_API_KEY') && !empty(NOFB_API_KEY);
         $NOFB_API_REGION_defined = defined('NOFB_API_REGION') && !empty(NOFB_API_REGION);
     ?>
@@ -49,12 +46,7 @@ if (isset($_GET['tab'])) {
         <div class="nofb-api-instruction">
             <h3><?php esc_html_e('API Configuration', 'nexoffload-for-bunny'); ?></h3>
             <p><?php esc_html_e('For security reasons, all API settings should be defined in your wp-config.php file.', 'nexoffload-for-bunny'); ?></p>
-            <pre><code>// Bunny.net Storage API
-define('BUNNY_API_KEY', 'your_bunny_api_key_here');
-define('BUNNY_STORAGE_ZONE', 'your_storage_zone_here');
-define('BUNNY_CUSTOM_HOSTNAME', 'cdn.yourdomain.com');
-
-// nofb Optimization API 
+            <pre><code>// nofb Optimization API 
 define('NOFB_API_KEY', 'your_nofb_api_key_here');
 define('NOFB_API_REGION', 'us'); // Options: us, eu, asia</code></pre>
         </div>
@@ -65,53 +57,8 @@ define('NOFB_API_REGION', 'us'); // Options: us, eu, asia</code></pre>
             do_settings_sections('nofb_api_settings');
             ?>
             
-            <table class="form-table">
-                <tr>
-                    <th scope="row">
-                        <label for="bunny_api_key"><?php esc_html_e('Bunny API Key', 'nexoffload-for-bunny'); ?></label>
-                    </th>
-                    <td>
-                        <?php if ($api_key_defined): ?>
-                            <input type="text" id="bunny_api_key" class="regular-text" value="<?php echo esc_attr('************' . substr(BUNNY_API_KEY, -4)); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Defined in wp-config.php', 'nexoffload-for-bunny'); ?></p>
-                        <?php else: ?>
-                            <input type="text" id="bunny_api_key" class="regular-text" value="<?php esc_html_e('Not defined', 'nexoffload-for-bunny'); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Define BUNNY_API_KEY in wp-config.php to use Bunny.net storage.', 'nexoffload-for-bunny'); ?></p>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="bunny_storage_zone"><?php esc_html_e('Storage Zone', 'nexoffload-for-bunny'); ?></label>
-                    </th>
-                    <td>
-                        <?php if ($storage_zone_defined): ?>
-                            <input type="text" id="bunny_storage_zone" class="regular-text" value="<?php echo esc_attr(BUNNY_STORAGE_ZONE); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Defined in wp-config.php', 'nexoffload-for-bunny'); ?></p>
-                        <?php else: ?>
-                            <input type="text" id="bunny_storage_zone" class="regular-text" value="<?php esc_html_e('Not defined', 'nexoffload-for-bunny'); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Define BUNNY_STORAGE_ZONE in wp-config.php. Get it from your Bunny.net dashboard.', 'nexoffload-for-bunny'); ?></p>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="bunny_custom_hostname"><?php esc_html_e('Custom Hostname', 'nexoffload-for-bunny'); ?></label>
-                    </th>
-                    <td>
-                        <?php if ($hostname_defined): ?>
-                            <input type="text" id="bunny_custom_hostname" class="regular-text" value="<?php echo esc_attr(BUNNY_CUSTOM_HOSTNAME); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Defined in wp-config.php', 'nexoffload-for-bunny'); ?></p>
-                        <?php else: ?>
-                            <input type="text" id="bunny_custom_hostname" class="regular-text" value="<?php esc_html_e('Not defined', 'nexoffload-for-bunny'); ?>" disabled />
-                            <p class="description"><?php esc_html_e('Define BUNNY_CUSTOM_HOSTNAME in wp-config.php (e.g. cdn.yourdomain.com).', 'nexoffload-for-bunny'); ?></p>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            </table>
-            
             <h3><?php esc_html_e('nofb Optimization API', 'nexoffload-for-bunny'); ?></h3>
-            <p><?php esc_html_e('These settings are for the Bunny Media Offload optimization API service.', 'nexoffload-for-bunny'); ?></p>
+            <p><?php esc_html_e('These settings are for the Nexoffload optimization API service.', 'nexoffload-for-bunny'); ?></p>
             
             <table class="form-table">
                 <tr>
@@ -170,18 +117,6 @@ define('NOFB_API_REGION', 'us'); // Options: us, eu, asia</code></pre>
                             <input type="checkbox" name="nofb_auto_optimize" id="nofb_auto_optimize" value="1" <?php checked(get_option('nofb_auto_optimize', false)); ?> />
                             <?php esc_html_e('Automatically optimize new media uploads', 'nexoffload-for-bunny'); ?>
                         </label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="nofb_auto_migrate"><?php esc_html_e('Auto Migration', 'nexoffload-for-bunny'); ?></label>
-                    </th>
-                    <td>
-                        <label for="nofb_auto_migrate">
-                            <input type="checkbox" name="nofb_auto_migrate" id="nofb_auto_migrate" value="1" <?php checked(get_option('nofb_auto_migrate', false)); ?> />
-                            <?php esc_html_e('Automatically migrate optimized files to Bunny CDN', 'nexoffload-for-bunny'); ?>
-                        </label>
-                        <p class="description"><?php esc_html_e('When disabled, you can manually trigger migration using the "Migrate All" button.', 'nexoffload-for-bunny'); ?></p>
                     </td>
                 </tr>
                 <tr>

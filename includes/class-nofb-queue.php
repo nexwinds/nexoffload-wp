@@ -148,24 +148,6 @@ class NOFB_Queue {
         return $stats;
     }
     
-    /**
-     * Get statistics for migration queue
-     * @return array Statistics array
-     */
-    private function get_migration_statistics() {
-        $stats = array();
-        
-        // Get total migrated count
-        $stats['total_migrated'] = $this->get_cached_count('_nofb_migrated', '1', 'migrated');
-        
-        // Get optimized and migrated IDs for pending calculation
-        $optimized_ids = $this->get_attachment_ids_by_meta('_nofb_optimized', '1', 'optimized');
-        $migrated_ids = $this->get_attachment_ids_by_meta('_nofb_migrated', '1', 'migrated');
-        
-        $stats['pending_migration'] = $this->calculate_pending_count($optimized_ids, $migrated_ids);
-        
-        return $stats;
-    }
     
     /**
      * Scan attachments in chunks to avoid memory issues
@@ -178,7 +160,11 @@ class NOFB_Queue {
         $offset = 0;
         
         // Initialize processor based on queue type
-        $processor = ($this->queue_type === 'optimization') ? new NOFB_Optimizer() : new NOFB_Migrator();
+        if ($this->queue_type !== 'optimization') {
+            return 0;
+        }
+        
+        $processor = new NOFB_Optimizer();
         
         do {
             $args = array(
@@ -221,18 +207,14 @@ class NOFB_Queue {
         $added = 0;
         
         foreach ($attachment_ids as $attachment_id) {
-            $file_path = ($this->queue_type === 'optimization') 
-                ? $processor->get_attachment_path($attachment_id)
-                : get_attached_file($attachment_id);
+            $file_path = $processor->get_attachment_path($attachment_id);
             
             if (!$file_path) {
                 continue;
             }
             
             // Check eligibility based on queue type
-            $is_eligible = ($this->queue_type === 'optimization')
-                ? $processor->is_eligible_for_optimization($file_path)
-                : $processor->is_eligible_for_migration($file_path);
+            $is_eligible = $processor->is_eligible_for_optimization($file_path);
             
             if ($is_eligible && $this->add($file_path)) {
                 $added++;
@@ -375,10 +357,8 @@ class NOFB_Queue {
             $batch_size = apply_filters('nofb_optimization_batch_size', $nofb_optimization_batch_size);
             // Ensure batch size is within limits (1-5)
             return min(max(1, $batch_size), 5);
-        } else {
-            global $nofb_migration_batch_size;
-            return $nofb_migration_batch_size;
         }
+        return 1;
     }
     
     /**
@@ -412,7 +392,7 @@ class NOFB_Queue {
      * Process queue items
      */
     public function process() {
-        if (empty($this->queue_type) || !in_array($this->queue_type, array('optimization', 'migration'), true)) {
+        if (empty($this->queue_type) || $this->queue_type !== 'optimization') {
             return false;
         }
         
@@ -428,9 +408,6 @@ class NOFB_Queue {
         if ($this->queue_type === 'optimization') {
             $optimizer = new NOFB_Optimizer();
             $processed = $optimizer->optimize_batch($batch);
-        } else {
-            $migrator = new NOFB_Migrator();
-            $processed = $migrator->migrate_batch($batch);
         }
         
         // Remove processed items from queue
@@ -453,9 +430,6 @@ class NOFB_Queue {
         if ($this->queue_type === 'optimization') {
             $optimization_stats = $this->get_optimization_statistics();
             $stats = array_merge($stats, $optimization_stats);
-        } elseif ($this->queue_type === 'migration') {
-            $migration_stats = $this->get_migration_statistics();
-            $stats = array_merge($stats, $migration_stats);
         }
         
         return $stats;
@@ -466,22 +440,6 @@ class NOFB_Queue {
      */
     public function scan_media_library() {
         return $this->scan_attachments_chunked(100, 'image');
-    }
-    
-    /**
-     * Scan media library for migration
-     */
-    public function scan_media_library_for_migration() {
-        $this->log('Scanning media library for migration eligible files...');
-        // We don't require optimization first - migrate any eligible media files
-        $migrator = new NOFB_Migrator();
-        $added = $this->scan_attachments_chunked(100, array(
-            'image/jpeg', 'image/jpg', 'image/png', 
-            'image/avif', 'image/webp', 'image/svg+xml',
-            'image/heic', 'image/heif', 'image/tiff'
-        ));
-        $this->log('Added ' . $added . ' files to migration queue');
-        return $added;
     }
     
     /**

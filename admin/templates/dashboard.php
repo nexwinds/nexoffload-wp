@@ -1,6 +1,6 @@
 <?php
 /**
- * Dashboard template for Bunny Media Offload
+ * Dashboard template for Nexoffload
  */
 if (!defined('ABSPATH')) {
     exit;
@@ -16,7 +16,7 @@ $stats = $this->get_statistics();
     <div class="nofb-dashboard-header">
         <div class="nofb-dashboard-title">
             <h2><?php esc_html_e('Dashboard', 'nexoffload-for-bunny'); ?></h2>
-            <p class="description"><?php esc_html_e('Overview of your media files optimization and migration.', 'nexoffload-for-bunny'); ?></p>
+            <p class="description"><?php esc_html_e('Overview of your media files optimization.', 'nexoffload-for-bunny'); ?></p>
         </div>
         <div class="nofb-dashboard-actions">
             <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-manager')); ?>" class="button button-primary">
@@ -44,10 +44,6 @@ $stats = $this->get_statistics();
                         <span class="nofb-stat-number"><?php echo esc_html(number_format($stats['optimized_files'])); ?></span>
                         <span class="nofb-stat-label"><?php esc_html_e('Optimized Files', 'nexoffload-for-bunny'); ?></span>
                     </div>
-                    <div class="nofb-stat-item">
-                        <span class="nofb-stat-number"><?php echo esc_html(number_format($stats['migrated_files'])); ?></span>
-                        <span class="nofb-stat-label"><?php esc_html_e('Migrated Files', 'nexoffload-for-bunny'); ?></span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -60,16 +56,12 @@ $stats = $this->get_statistics();
             <div class="nofb-card-body">
                 <?php
                 // Check if API key is configured
-                $api_key = defined('BUNNY_API_KEY') ? BUNNY_API_KEY : get_option('bunny_api_key', '');
-                $storage_zone = defined('BUNNY_STORAGE_ZONE') ? BUNNY_STORAGE_ZONE : get_option('bunny_storage_zone', '');
+                $api_key = defined('NOFB_API_KEY') ? NOFB_API_KEY : '';
                 
-                if (empty($api_key) || empty($storage_zone)):
+                if (empty($api_key)):
                 ?>
                 <div class="nofb-notice nofb-warning">
-                    <p><?php esc_html_e('API configuration is incomplete. Please configure your API settings.', 'nexoffload-for-bunny'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-settings')); ?>" class="button">
-                        <?php esc_html_e('Configure API', 'nexoffload-for-bunny'); ?>
-                    </a>
+                    <p><?php esc_html_e('API configuration is incomplete. Please configure your API settings in wp-config.php.', 'nexoffload-for-bunny'); ?></p>
                 </div>
                 <?php else: ?>
                 <div class="nofb-notice nofb-success">
@@ -80,7 +72,6 @@ $stats = $this->get_statistics();
                 <?php
                 // Get queue status
                 $optimization_queue = get_option('nofb_optimization_queue', array());
-                $migration_queue = get_option('nofb_migration_queue', array());
                 ?>
                 <div class="nofb-queue-status">
                     <h4><?php esc_html_e('Queue Status', 'nexoffload-for-bunny'); ?></h4>
@@ -88,10 +79,6 @@ $stats = $this->get_statistics();
                         <div class="nofb-queue-item">
                             <span class="nofb-queue-label"><?php esc_html_e('Optimization Queue:', 'nexoffload-for-bunny'); ?></span>
                             <span class="nofb-queue-count"><?php echo esc_html(count($optimization_queue)); ?> <?php esc_html_e('files', 'nexoffload-for-bunny'); ?></span>
-                        </div>
-                        <div class="nofb-queue-item">
-                            <span class="nofb-queue-label"><?php esc_html_e('Migration Queue:', 'nexoffload-for-bunny'); ?></span>
-                            <span class="nofb-queue-count"><?php echo esc_html(count($migration_queue)); ?> <?php esc_html_e('files', 'nexoffload-for-bunny'); ?></span>
                         </div>
                     </div>
                 </div>
@@ -112,17 +99,6 @@ $stats = $this->get_statistics();
                             <p><?php esc_html_e('Start optimizing your existing media files.', 'nexoffload-for-bunny'); ?></p>
                             <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-manager')); ?>" class="button">
                                 <?php esc_html_e('Optimize', 'nexoffload-for-bunny'); ?>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="nofb-quickstart-step">
-                        <span class="nofb-step-icon dashicons dashicons-cloud-upload"></span>
-                        <div class="nofb-step-content">
-                            <h4><?php esc_html_e('Migrate to Bunny.net CDN', 'nexoffload-for-bunny'); ?></h4>
-                            <p><?php esc_html_e('Offload your optimized media files to Bunny.net CDN.', 'nexoffload-for-bunny'); ?></p>
-                            <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-manager&tab=migration')); ?>" class="button">
-                                <?php esc_html_e('Migrate', 'nexoffload-for-bunny'); ?>
                             </a>
                         </div>
                     </div>

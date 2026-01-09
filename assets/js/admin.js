@@ -9,7 +9,6 @@
     $(document).ready(function() {
         initApiCheck();
         initOptimizationQueue();
-        initMigrationQueue();
         initQueueReinitialize();
     });
     
@@ -40,17 +39,6 @@
                         $('#nofb-api-status').removeClass('nofb-status-unknown nofb-status-success')
                             .addClass('nofb-status-error')
                             .text(data.nofb_status.message);
-                    }
-                    
-                    // Update Bunny API status
-                    if (data.bunny_status.status === 'success') {
-                        $('#bunny-api-status').removeClass('nofb-status-unknown nofb-status-error')
-                            .addClass('nofb-status-success')
-                            .text(data.bunny_status.message);
-                    } else {
-                        $('#bunny-api-status').removeClass('nofb-status-unknown nofb-status-success')
-                            .addClass('nofb-status-error')
-                            .text(data.bunny_status.message);
                     }
                     
                     // Update credits count
@@ -85,28 +73,6 @@
         $('#nofb-clear-optimization').on('click', function() {
             if (confirm(nofbAdminVars.confirmClear)) {
                 queueAction('optimization', 'clear');
-            }
-        });
-    }
-    
-    /**
-     * Initialize migration queue handlers
-     */
-    function initMigrationQueue() {
-        // Scan optimized files
-        $('#nofb-scan-migration').on('click', function() {
-            queueAction('migration', 'scan');
-        });
-        
-        // Process queue
-        $('#nofb-process-migration').on('click', function() {
-            queueAction('migration', 'process');
-        });
-        
-        // Clear queue
-        $('#nofb-clear-migration').on('click', function() {
-            if (confirm(nofbAdminVars.confirmClear)) {
-                queueAction('migration', 'clear');
             }
         });
     }
@@ -181,10 +147,6 @@
             $('#nofb-optimization-queue-size').text(stats.queue_size);
             $('#nofb-optimization-total').text(stats.total_optimized);
             $('#nofb-optimization-pending').text(stats.pending_optimization);
-        } else if (queueType === 'migration') {
-            $('#nofb-migration-queue-size').text(stats.queue_size);
-            $('#nofb-migration-total').text(stats.total_migrated);
-            $('#nofb-migration-pending').text(stats.pending_migration);
         }
     }
     
@@ -220,16 +182,6 @@
                     }
                     html += '</div>';
                     
-                    // Bunny API Result
-                    html += '<div class="nofb-api-result-item">';
-                    html += '<h4>Bunny API</h4>';
-                    if (results.bunny_api.status === 'success') {
-                        html += '<div class="nofb-notice nofb-success"><p>' + results.bunny_api.message + '</p></div>';
-                    } else {
-                        html += '<div class="nofb-notice nofb-error"><p>' + results.bunny_api.message + '</p></div>';
-                    }
-                    html += '</div>';
-                    
                     resultContainer.html(html);
                 } else {
                     var html = '<div class="nofb-notice nofb-error"><p>' + response.data.message + '</p></div>';
@@ -245,16 +197,6 @@
                             html += '<div class="nofb-notice nofb-success"><p>' + results.nofb_api.message + '</p></div>';
                         } else {
                             html += '<div class="nofb-notice nofb-error"><p>' + results.nofb_api.message + '</p></div>';
-                        }
-                        html += '</div>';
-                        
-                        // Bunny API Result
-                        html += '<div class="nofb-api-result-item">';
-                        html += '<h4>Bunny API</h4>';
-                        if (results.bunny_api.status === 'success') {
-                            html += '<div class="nofb-notice nofb-success"><p>' + results.bunny_api.message + '</p></div>';
-                        } else {
-                            html += '<div class="nofb-notice nofb-error"><p>' + results.bunny_api.message + '</p></div>';
                         }
                         html += '</div>';
                     }
@@ -353,80 +295,7 @@
                     }
                 },
                 error: function() {
-                    log.prepend('<div class="error">' + getCurrentTime() + ' Server error occurred. Process stopped.</div>');
-                    button.prop('disabled', false);
-                    stopButton.prop('disabled', true);
-                }
-            });
-        }
-    });
-    
-    // Stop Optimization Process
-    $('#nofb-stop-optimization').on('click', function() {
-        window.nofbStopOptimization = true;
-        $(this).prop('disabled', true);
-    });
-    
-    // Migration Process
-    $('#nofb-migrate-all').on('click', function() {
-        var button = $(this);
-        var stopButton = $('#nofb-stop-migration');
-        var log = $('#nofb-migration-log .nofb-log');
-        
-        button.prop('disabled', true);
-        stopButton.prop('disabled', false);
-        log.prepend('<div>' + getCurrentTime() + ' Starting migration process...</div>');
-        
-        // Enable stop flag for AJAX calls
-        window.nofbStopMigration = false;
-        
-        // Start the process
-        migrateBatch();
-        
-        function migrateBatch() {
-            if (window.nofbStopMigration) {
-                log.prepend('<div>' + getCurrentTime() + ' Migration process stopped by user.</div>');
-                button.prop('disabled', false);
-                stopButton.prop('disabled', true);
-                return;
-            }
-            
-            $.ajax({
-                url: nofb_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'nofb_process_migration_batch',
-                    nonce: nofb_params.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Update log
-                        if (response.data.messages && response.data.messages.length > 0) {
-                            response.data.messages.forEach(function(message) {
-                                log.prepend('<div>' + getCurrentTime() + ' ' + message + '</div>');
-                            });
-                        }
-                        
-                        // Update progress
-                        updateMigrationProgress(response.data.progress, response.data.total);
-                        
-                        // Continue if more files need processing
-                        if (response.data.continue) {
-                            setTimeout(migrateBatch, 1000);
-                        } else {
-                            log.prepend('<div>' + getCurrentTime() + ' Migration process completed!</div>');
-                            button.prop('disabled', false);
-                            stopButton.prop('disabled', true);
-                            refreshRecentMigrations();
-                        }
-                    } else {
-                        log.prepend('<div class="error">' + getCurrentTime() + ' Error: ' + response.data.message + '</div>');
-                        button.prop('disabled', false);
-                        stopButton.prop('disabled', true);
-                    }
-                },
-                error: function() {
-                    log.prepend('<div class="error">' + getCurrentTime() + ' Server error occurred. Process stopped.</div>');
+                    log.prepenpend('<div class="error">' + getCurrentTime() + ' Server error occurred. Process stopped.</div>');
                     button.prop('disabled', false);
                     stopButton.prop('disabled', true);
                 }
@@ -468,34 +337,6 @@
         });
     }
     
-    // Load Recent Migrations
-    function refreshRecentMigrations() {
-        var container = $('#nofb-recent-migrations');
-        
-        if (container.length === 0) {
-            return;
-        }
-        
-        $.ajax({
-            url: nofb_params.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'nofb_get_recent_migrations',
-                nonce: nofb_params.nonce
-            },
-            success: function(response) {
-                if (response.success && response.data.html) {
-                    container.html(response.data.html);
-                } else {
-                    container.html('<tr><td colspan="6">No recent migrations found.</td></tr>');
-                }
-            },
-            error: function() {
-                container.html('<tr><td colspan="6">Failed to load recent migrations.</td></tr>');
-            }
-        });
-    }
-    
     // Helper function to update progress
     function updateProgress(progress, total) {
         var progressBar = $('.nofb-progress-container .nofb-progress');
@@ -505,17 +346,6 @@
         
         // Update the info text if it exists
         $('.nofb-progress-info p').text(progress + ' / ' + total + ' files processed (' + percentage + '%)');
-    }
-    
-    // Helper function to update migration progress
-    function updateMigrationProgress(progress, total) {
-        var progressBar = $('#nofb-migration .nofb-progress-container .nofb-progress');
-        var percentage = total > 0 ? Math.round((progress / total) * 100) : 0;
-        
-        progressBar.css('width', percentage + '%');
-        
-        // Update the info text if it exists
-        $('#nofb-migration .nofb-progress-info p').text(progress + ' / ' + total + ' files processed (' + percentage + '%)');
     }
     
     // Helper function to get current time string
@@ -552,13 +382,6 @@
                 reinitializeQueue('optimization');
             }
         });
-        
-        // Migration queue reinitialize
-        $('#nofb-reinitialize-migration-queue').on('click', function() {
-            if (confirm('This will rebuild the migration queue with proper file paths. Continue?')) {
-                reinitializeQueue('migration');
-            }
-        });
     }
     
     /**
@@ -569,9 +392,7 @@
         $('.nofb-actions button').prop('disabled', true);
         
         // Show notification
-        const log = queueType === 'optimization' ? 
-                   $('#nofb-optimization-log .nofb-log') : 
-                   $('#nofb-migration-log .nofb-log');
+        const log = $('#nofb-optimization-log .nofb-log');
         
         log.prepend('<p>[' + getCurrentTime() + '] Reinitializing queue...</p>');
         
@@ -591,8 +412,6 @@
                     // Update eligibility count
                     if (queueType === 'optimization') {
                         $('#nofb-optimize-all').prop('disabled', response.data.added === 0);
-                    } else {
-                        $('#nofb-migrate-all').prop('disabled', response.data.added === 0);
                     }
                 } else {
                     log.prepend('<p>[' + getCurrentTime() + '] Error: ' + response.data.message + '</p>');

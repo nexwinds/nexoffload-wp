@@ -42,11 +42,6 @@
     color: #4f8a10;
 }
 
-.nofb-status.nofb-migrated {
-    background-color: #bde5f8;
-    color: #00529b;
-}
-
 .nofb-status.nofb-pending {
     background-color: #feefb3;
     color: #9f6000;

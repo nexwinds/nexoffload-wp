@@ -39,7 +39,7 @@ class NOFB_Media_Library {
      * Add custom columns to media library
      */
     public function add_media_columns($columns) {
-        $columns['nofb_status'] = __('Bunny Media', 'nexoffload-for-bunny');
+        $columns['nofb_status'] = __('Optimization Status', 'nexoffload-for-bunny');
         return $columns;
     }
     
@@ -137,8 +137,7 @@ class NOFB_Media_Library {
      * Register bulk actions
      */
     public function register_bulk_actions($bulk_actions) {
-        $bulk_actions['nofb_optimize'] = __('Optimize with Bunny Media', 'nexoffload-for-bunny');
-        $bulk_actions['nofb_migrate'] = __('Migrate to Bunny CDN', 'nexoffload-for-bunny');
+        $bulk_actions['nofb_optimize'] = __('Optimize with Nexoffload', 'nexoffload-for-bunny');
         return $bulk_actions;
     }
     
@@ -146,7 +145,7 @@ class NOFB_Media_Library {
      * Handle bulk actions
      */
     public function handle_bulk_actions($redirect_to, $action, $post_ids) {
-        if ($action !== 'nofb_optimize' && $action !== 'nofb_migrate') {
+        if ($action !== 'nofb_optimize') {
             return $redirect_to;
         }
         
@@ -174,11 +173,6 @@ class NOFB_Media_Library {
             
             if ($action === 'nofb_optimize') {
                 $queue = new NOFB_Queue('optimization');
-                if ($queue->add($file_path)) {
-                    $processed++;
-                }
-            } elseif ($action === 'nofb_migrate') {
-                $queue = new NOFB_Queue('migration');
                 if ($queue->add($file_path)) {
                     $processed++;
                 }
@@ -222,10 +216,9 @@ class NOFB_Media_Library {
         }
         
         echo '<select name="nofb_status">';
-        echo '<option value="">' . esc_html__('Bunny Media Status', 'nexoffload-for-bunny') . '</option>';
+        echo '<option value="">' . esc_html__('Optimization Status', 'nexoffload-for-bunny') . '</option>';
         echo '<option value="not_processed" ' . selected($status, 'not_processed', false) . '>' . esc_html__('Not Processed', 'nexoffload-for-bunny') . '</option>';
         echo '<option value="optimized" ' . selected($status, 'optimized', false) . '>' . esc_html__('Optimized', 'nexoffload-for-bunny') . '</option>';
-        echo '<option value="migrated" ' . selected($status, 'migrated', false) . '>' . esc_html__('On Bunny CDN', 'nexoffload-for-bunny') . '</option>';
         echo '</select>';
         
         // Add our nonce field right after the select control
@@ -279,8 +272,8 @@ class NOFB_Media_Library {
                     $processed_ids = $wpdb->get_col(
                         $wpdb->prepare(
                             "SELECT DISTINCT post_id FROM {$wpdb->postmeta} 
-                            WHERE meta_key IN (%s, %s)",
-                            '_nofb_optimized', '_nofb_migrated'
+                            WHERE meta_key = %s",
+                            '_nofb_optimized'
                         )
                     );
                     
@@ -304,7 +297,7 @@ class NOFB_Media_Library {
                 break;
                 
             case 'optimized':
-                // Get all attachment IDs that are optimized but not migrated
+                // Get all attachment IDs that are optimized
                 $cache_key = 'nofb_optimized_only_ids';
                 $query_cache_key = 'nofb_optimized_query_result';
                 $cached_query_result = wp_cache_get($query_cache_key, 'nofb_media_library');
@@ -315,15 +308,9 @@ class NOFB_Media_Library {
                     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query needed for complex subquery filtering with proper caching
                     $optimized_ids = $wpdb->get_col(
                         $wpdb->prepare(
-                            "SELECT pm1.post_id FROM {$wpdb->postmeta} pm1
-                            WHERE pm1.meta_key = %s AND pm1.meta_value = %s
-                            AND NOT EXISTS (
-                                SELECT 1 FROM {$wpdb->postmeta} pm2
-                                WHERE pm2.post_id = pm1.post_id
-                                AND pm2.meta_key = %s
-                                AND pm2.meta_value = %s
-                            )",
-                            '_nofb_optimized', '1', '_nofb_migrated', '1'
+                            "SELECT post_id FROM {$wpdb->postmeta}
+                            WHERE meta_key = %s AND meta_value = %s",
+                            '_nofb_optimized', '1'
                         )
                     );
                     
@@ -341,38 +328,6 @@ class NOFB_Media_Library {
                 
                 if (!empty($optimized_ids)) {
                     $query->set('post__in', $optimized_ids);
-                } else {
-                    // No matching IDs, force no results
-                    $query->set('post__in', array(0));
-                }
-                break;
-                
-            case 'migrated':
-                // Get all attachment IDs that are migrated
-                $cache_key = 'nofb_migrated_ids';
-                $migrated_ids = wp_cache_get($cache_key, 'nofb_media_library');
-                
-                if ($migrated_ids === false) {
-                    // Use direct database query instead of meta_query
-                    global $wpdb;
-                    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Direct query used for performance with proper caching implementation
-                    $migrated_ids = $wpdb->get_col(
-                        $wpdb->prepare(
-                            "SELECT post_id FROM {$wpdb->postmeta}
-                            WHERE meta_key = %s AND meta_value = '1'",
-                            '_nofb_migrated'
-                        )
-                    );
-                    
-                    // Convert to integers
-                    $migrated_ids = array_map('intval', $migrated_ids);
-                    
-                    // Cache the results for 1 hour
-                    wp_cache_set($cache_key, $migrated_ids, 'nofb_media_library', HOUR_IN_SECONDS);
-                }
-                
-                if (!empty($migrated_ids)) {
-                    $query->set('post__in', $migrated_ids);
                 } else {
                     // No matching IDs, force no results
                     $query->set('post__in', array(0));
@@ -412,25 +367,7 @@ class NOFB_Media_Library {
      */
     public function reset_counters() {
         wp_cache_delete('nofb_eligible_files_count', 'nofb_media');
-        wp_cache_delete('nofb_migrated_files_count', 'nofb_media');
     }
     
-    /**
-     * Get potential queue size
-     */
-    public function get_queue_potential_sizes() {
-        $queue_opt = new NOFB_Queue('optimization');
-        $queue_mig = new NOFB_Queue('migration');
-        
-        // ... existing code ...
-    }
-
-    /**
-     * Migrate a media file to Bunny.net
-     */
-    public function migrate_media_file($attachment_id) {
-        $file = get_attached_file($attachment_id);
-        $migrator = new NOFB_Migrator();
-        // ... existing code ...
-    }
+}   
 } 

@@ -34,8 +34,8 @@ class NOFB_Admin {
     public function add_admin_menu() {
         // Main menu item
         add_menu_page(
-            __('Bunny Media Offload', 'nexoffload-for-bunny'),
-            __('Bunny Media', 'nexoffload-for-bunny'),
+            __('Nexoffload Media', 'nexoffload-for-bunny'),
+            __('Nexoffload', 'nexoffload-for-bunny'),
             'manage_options',
             'nexoffload-for-bunny',
             array($this, 'render_dashboard_page'),
@@ -95,10 +95,7 @@ class NOFB_Admin {
             'sanitize_callback' => array($this, 'sanitize_checkbox'),
             'type' => 'boolean'
         ));
-        register_setting('nofb_general_settings', 'nofb_auto_migrate', array(
-            'sanitize_callback' => array($this, 'sanitize_checkbox'),
-            'type' => 'boolean'
-        ));
+
         register_setting('nofb_general_settings', 'nofb_file_versioning', array(
             'sanitize_callback' => array($this, 'sanitize_checkbox'),
             'type' => 'boolean'
@@ -189,10 +186,6 @@ class NOFB_Admin {
                         refreshRecentOptimizations();
                     }
                     
-                    if ($("#nofb-recent-migrations").length) {
-                        refreshRecentMigrations();
-                    }
-                    
                     // Optimization button handlers
                     $("#nofb-optimize-all").on("click", function() {
                         const $button = $(this);
@@ -232,62 +225,6 @@ class NOFB_Admin {
                             data: {
                                 action: "nofb_reinitialize_queue",
                                 queue_type: "optimization",
-                                nonce: nofb_params.nonce
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    location.reload();
-                                } else {
-                                    alert("Error: " + response.data.message);
-                                }
-                                $button.prop("disabled", false);
-                            },
-                            error: function() {
-                                alert("An error occurred while reinitializing the queue.");
-                                $button.prop("disabled", false);
-                            }
-                        });
-                    });
-                    
-                    // Migration button handlers
-                    $("#nofb-migrate-all").on("click", function() {
-                        const $button = $(this);
-                        const $stopButton = $("#nofb-stop-migration");
-                        
-                        $button.prop("disabled", true);
-                        $stopButton.prop("disabled", false);
-                        
-                        // Clear log container
-                        const $log = $("#nofb-migration-log .nofb-log");
-                        $log.empty();
-                        
-                        startMigration();
-                    });
-                    
-                    $("#nofb-stop-migration").on("click", function() {
-                        const $button = $(this);
-                        $button.prop("disabled", true);
-                        
-                        window.nofbStopMigration = true;
-                        
-                        const $log = $("#nofb-migration-log .nofb-log");
-                        $log.append("<p>" + getCurrentTime() + " Stopping migration after current batch completes...</p>");
-                    });
-                    
-                    $("#nofb-reinitialize-migration-queue").on("click", function() {
-                        if (!confirm("Are you sure you want to reinitialize the migration queue? This will scan your media library again.")) {
-                            return;
-                        }
-                        
-                        const $button = $(this);
-                        $button.prop("disabled", true);
-                        
-                        $.ajax({
-                            url: nofb_params.ajax_url,
-                            type: "POST",
-                            data: {
-                                action: "nofb_reinitialize_queue",
-                                queue_type: "migration",
                                 nonce: nofb_params.nonce
                             },
                             success: function(response) {
@@ -540,34 +477,6 @@ class NOFB_Admin {
                             }
                         });
                     }
-                    
-                    // Helper function to refresh recent migrations
-                    function refreshRecentMigrations() {
-                        var container = $("#nofb-recent-migrations");
-                        
-                        if (container.length === 0) {
-                            return;
-                        }
-                        
-                        $.ajax({
-                            url: nofb_params.ajax_url,
-                            type: "POST",
-                            data: {
-                                action: "nofb_get_recent_migrations",
-                                nonce: nofb_params.nonce
-                            },
-                            success: function(response) {
-                                if (response.success && response.data.html) {
-                                    container.html(response.data.html);
-                                } else {
-                                    container.html("<tr><td colspan=\"6\">No recent migrations found.</td></tr>");
-                                }
-                            },
-                            error: function() {
-                                container.html("<tr><td colspan=\"6\">Failed to load recent migrations.</td></tr>");
-                            }
-                        });
-                    }
                 });
             ');
         }
@@ -633,14 +542,12 @@ class NOFB_Admin {
         
         $stats = array(
             'total_files' => 0,
-            'optimized_files' => 0,
-            'migrated_files' => 0
+            'optimized_files' => 0
         );
         
         // Cache keys for individual queries to improve performance
         $total_cache_key = 'nofb_total_files_count';
         $optimized_cache_key = 'nofb_optimized_files_count';
-        $migrated_cache_key = 'nofb_migrated_files_count';
         
         // Total files in media library
         $stats['total_files'] = wp_cache_get($total_cache_key, 'nofb_admin');
@@ -662,16 +569,6 @@ class NOFB_Admin {
             wp_cache_set($optimized_cache_key, $stats['optimized_files'], 'nofb_admin', 5 * MINUTE_IN_SECONDS);
         }
         
-        // Migrated files (using post meta instead of custom table)
-        $stats['migrated_files'] = wp_cache_get($migrated_cache_key, 'nofb_admin');
-        if ($stats['migrated_files'] === false) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Direct query used for performance when counting migrated files with proper caching
-            $stats['migrated_files'] = $wpdb->get_var(
-                $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s", '_nofb_migrated', '1')
-            );
-            wp_cache_set($migrated_cache_key, $stats['migrated_files'], 'nofb_admin', 5 * MINUTE_IN_SECONDS);
-        }
-        
         // Cache the statistics for 5 minutes
         wp_cache_set($cache_key, $stats, 'nofb_admin', 5 * MINUTE_IN_SECONDS);
         
@@ -685,14 +582,13 @@ class NOFB_Admin {
         wp_cache_delete('nofb_dashboard_statistics', 'nofb_admin');
         wp_cache_delete('nofb_total_files_count', 'nofb_admin');
         wp_cache_delete('nofb_optimized_files_count', 'nofb_admin');
-        wp_cache_delete('nofb_migrated_files_count', 'nofb_admin');
     }
     
     /**
      * Clear statistics cache if relevant metadata changes
      */
     public function maybe_clear_statistics_cache($meta_id, $object_id, $meta_key) {
-        if ($meta_key === '_nofb_migrated' || $meta_key === '_nofb_optimized' || $meta_key === '_nofb_bunny_url') {
+        if ($meta_key === '_nofb_optimized') {
             $this->clear_statistics_cache();
         }
     }
@@ -702,37 +598,6 @@ class NOFB_Admin {
      * Handles the processing of URL fixing requests from the settings page
      */
     public function init_maintenance_tools() {
-        // Process URL fixing if requested
-        if (isset($_POST['nofb_action']) && $_POST['nofb_action'] === 'fix_image_urls') {
-            // Check capabilities
-            if (!current_user_can('manage_options')) {
-                wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'nexoffload-for-bunny'));
-            }
-            
-            // Verify nonce
-            if (!isset($_POST['nofb_fix_urls_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nofb_fix_urls_nonce'])), 'nofb_fix_urls_action')) {
-                // Invalid nonce
-                add_action('admin_notices', function() {
-                    echo '<div class="notice notice-error"><p>' . esc_html__('Security check failed.', 'nexoffload-for-bunny') . '</p></div>';
-                });
-                return;
-            }
-            
-            // Run the URL fixing function
-            $result = nofb_force_update_image_urls();
-            
-            // Add admin notice with the result
-            add_action('admin_notices', function() use ($result) {
-                if ($result['status'] === 'success') {
-                    /* translators: %1$d: Total count of image URLs processed, %2$d: Count of successfully updated URLs, %3$d: Count of errors encountered */
-                    echo '<div class="notice notice-success"><p>' . sprintf(esc_html__('Image URLs fixed successfully. Total: %1$d, Updated: %2$d, Errors: %3$d', 'nexoffload-for-bunny'), esc_html($result['total']), esc_html($result['updated']), esc_html($result['errors'])) . '</p></div>';
-                } else {
-                    /* translators: %s: Error message from the URL fixing process */
-                    echo '<div class="notice notice-error"><p>' . esc_html($result['message']) . '</p></div>';
-                }
-            });
-        }
-        
         // Process cache clearing if requested
         if (isset($_POST['nofb_action']) && $_POST['nofb_action'] === 'clear_cache') {
             // Check capabilities
@@ -774,22 +639,11 @@ class NOFB_Admin {
             <div class="nofb-card-body">
                 <div class="nofb-support-info">
                     <p class="nofb-support-description">
-                        <?php esc_html_e('This plugin and all media migration features are 100% free, maintained by us as a thank-you for creating your Bunny.net account through our affiliate link.', 'nexoffload-for-bunny'); ?>
+                        <?php esc_html_e('This plugin provides advanced image optimization features.', 'nexoffload-for-bunny'); ?>
                     </p>
                 </div>
                 
                 <div class="nofb-quickstart-steps">
-                    <div class="nofb-quickstart-step">
-                        <span class="nofb-step-icon dashicons dashicons-cloud"></span>
-                        <div class="nofb-step-content">
-                            <h4><?php esc_html_e('Create a Bunny.net Account', 'nexoffload-for-bunny'); ?></h4>
-                            <p><?php esc_html_e('Get started with Bunny.net to access their high-performance CDN and storage services.', 'nexoffload-for-bunny'); ?></p>
-                            <a href="https://bunny.net?ref=99jl5w7iou" target="_blank" rel="noopener noreferrer" class="button">
-                                <?php esc_html_e('Create a Bunny.net Account', 'nexoffload-for-bunny'); ?>
-                            </a>
-                        </div>
-                    </div>
-                    
                     <div class="nofb-quickstart-step">
                         <span class="nofb-step-icon dashicons dashicons-admin-tools"></span>
                         <div class="nofb-step-content">

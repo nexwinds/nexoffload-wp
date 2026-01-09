@@ -14,7 +14,6 @@ class NOFB_Optimizer {
     private $api_region;
     private $api_base_url;
     private $max_file_size_kb;
-    private $custom_hostname;
     private $config_cache = null;
     
     public function __construct() {
@@ -22,7 +21,6 @@ class NOFB_Optimizer {
         $this->api_region = NOFB_API_REGION;
         $this->api_base_url = $this->get_api_base_url();
         $this->max_file_size_kb = get_option('nofb_max_file_size', NOFB_DEFAULT_MAX_FILE_SIZE);
-        $this->custom_hostname = BUNNY_CUSTOM_HOSTNAME;
     }
     
     /**
@@ -804,17 +802,6 @@ class NOFB_Optimizer {
         // Validate eligibility
         $validation = $this->validate_file_eligibility($file_path, $info);
         
-        // Handle special case for size-restricted files
-        if (!$validation['eligible'] && strpos($validation['reason'], 'File size not eligible') === 0) {
-            $config = $this->get_cached_config();
-            if ($config['auto_migrate'] && $info['size'] / 1024 <= $config['max_file_size_kb']) {
-                // Add directly to migration queue
-                $queue = new NOFB_Queue('migration');
-                $queue->add($file_path);
-                $this->log('File added to migration queue: ' . basename($file_path));
-            }
-        }
-        
         $this->log($validation['reason'] . ': ' . basename($file_path));
         return $validation['eligible'];
     }
@@ -995,9 +982,6 @@ class NOFB_Optimizer {
         
         // Update database metadata
         $this->mark_as_optimized($final_file_path, $result);
-        
-        // Check migration eligibility
-        $this->check_migration_eligibility($final_file_path);
         
         return true;
     }
@@ -1554,30 +1538,7 @@ class NOFB_Optimizer {
         }
     }
     
-    /**
-     * Check if optimized file is eligible for migration
-     */
-    private function check_migration_eligibility($file_path) {
-        $config = $this->get_cached_config();
-        
-        // Only add to migration queue if auto-migration is enabled
-        if (!$config['auto_migrate']) {
-            return;
-        }
-        
-        $mime_type = wp_check_filetype($file_path)['type'];
-        $file_size_kb = filesize($file_path) / 1024;
-        
-        // Check if AVIF, WebP, or SVG and within size limit
-        $eligible_types = array('image/avif', 'image/webp', 'image/svg+xml');
-        
-        if (in_array($mime_type, $eligible_types) && $file_size_kb <= $config['max_file_size_kb']) {
-            // Add to migration queue
-            $queue = new NOFB_Queue('migration');
-            $queue->add($file_path);
-        }
-    }
-    
+
     /**
      * Get attachment ID by file path
      */

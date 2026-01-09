@@ -1,6 +1,6 @@
 <?php
 /**
- * Documentation template for Bunny Media Offload
+ * Documentation template for Nexoffload
  */
 if (!defined('ABSPATH')) {
     exit;
@@ -38,11 +38,6 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field(wp_unslash($_GET['tab'])
                     </a>
                 </li>
                 <li>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-documentation&tab=migration&_wpnonce=' . wp_create_nonce('nofb_documentation'))); ?>" class="<?php echo esc_attr($active_tab == 'migration' ? 'active' : ''); ?>">
-                        <?php esc_html_e('Migration', 'nexoffload-for-bunny'); ?>
-                    </a>
-                </li>
-                <li>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=nexoffload-for-bunny-documentation&tab=faq&_wpnonce=' . wp_create_nonce('nofb_documentation'))); ?>" class="<?php echo esc_attr($active_tab == 'faq' ? 'active' : ''); ?>">
                         <?php esc_html_e('FAQ', 'nexoffload-for-bunny'); ?>
                     </a>
@@ -53,24 +48,20 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field(wp_unslash($_GET['tab'])
         <div class="nofb-content">
             <?php if ($active_tab === 'getting-started'): ?>
             
-            <h2><?php esc_html_e('Getting Started with Bunny Media Offload', 'nexoffload-for-bunny'); ?></h2>
+            <h2><?php esc_html_e('Getting Started with Nexoffload', 'nexoffload-for-bunny'); ?></h2>
             
-            <p><?php esc_html_e('Bunny Media Offload helps you optimize your media files and migrate them to Bunny.net CDN for faster delivery.', 'nexoffload-for-bunny'); ?></p>
+            <p><?php esc_html_e('Nexoffload helps you optimize your media files for faster delivery.', 'nexoffload-for-bunny'); ?></p>
             
             <h3><?php esc_html_e('Quick Start Guide', 'nexoffload-for-bunny'); ?></h3>
             
             <ol>
                 <li>
                     <strong><?php esc_html_e('Set up API credentials', 'nexoffload-for-bunny'); ?></strong>
-                    <p><?php esc_html_e('Go to the Settings page and enter your Bunny.net API key and Storage Zone details.', 'nexoffload-for-bunny'); ?></p>
+                    <p><?php esc_html_e('Go to the Settings page and enter your NOFB API key.', 'nexoffload-for-bunny'); ?></p>
                 </li>
                 <li>
                     <strong><?php esc_html_e('Optimize your media files', 'nexoffload-for-bunny'); ?></strong>
                     <p><?php esc_html_e('Use the Media Manager to optimize your existing media files or enable automatic optimization for new uploads.', 'nexoffload-for-bunny'); ?></p>
-                </li>
-                <li>
-                    <strong><?php esc_html_e('Migrate to Bunny.net CDN', 'nexoffload-for-bunny'); ?></strong>
-                    <p><?php esc_html_e('After optimization, migrate your media files to Bunny.net CDN for faster delivery.', 'nexoffload-for-bunny'); ?></p>
                 </li>
             </ol>
             
@@ -144,7 +135,7 @@ define('NOFB_API_REGION', 'us'); // 'us' or 'eu'</code></pre>
             
             <h2><?php esc_html_e('Media Optimization', 'nexoffload-for-bunny'); ?></h2>
             
-            <p><?php esc_html_e('Bunny Media Offload can optimize your media files to reduce file size without sacrificing quality.', 'nexoffload-for-bunny'); ?></p>
+            <p><?php esc_html_e('Nexoffload can optimize your media files to reduce file size without sacrificing quality.', 'nexoffload-for-bunny'); ?></p>
             
             <h3><?php esc_html_e('How Optimization Works', 'nexoffload-for-bunny'); ?></h3>
             
@@ -185,85 +176,15 @@ define('NOFB_API_REGION', 'us'); // 'us' or 'eu'</code></pre>
                 <li><?php esc_html_e('Save changes', 'nexoffload-for-bunny'); ?></li>
             </ol>
             
-            <?php elseif ($active_tab === 'migration'): ?>
-            
-            <h2><?php esc_html_e('CDN Migration', 'nexoffload-for-bunny'); ?></h2>
-            
-            <p><?php esc_html_e('After optimizing your media files, you can migrate them to Bunny.net CDN for faster delivery.', 'nexoffload-for-bunny'); ?></p>
-            
-            <h3><?php esc_html_e('How Migration Works', 'nexoffload-for-bunny'); ?></h3>
-            
-            <p><?php esc_html_e('The migration process uploads your optimized media files to Bunny.net Edge Storage and updates your WordPress database to serve files from the CDN.', 'nexoffload-for-bunny'); ?></p>
-            
-            <h3><?php esc_html_e('Migration Prerequisites', 'nexoffload-for-bunny'); ?></h3>
-            
-            <ul>
-                <li><?php esc_html_e('Valid Bunny.net API key configured', 'nexoffload-for-bunny'); ?></li>
-                <li><?php esc_html_e('Valid Storage Zone configured', 'nexoffload-for-bunny'); ?></li>
-                <li><?php esc_html_e('Files should be optimized before migration (recommended)', 'nexoffload-for-bunny'); ?></li>
-            </ul>
-            
-            <h3><?php esc_html_e('Migration Eligibility', 'nexoffload-for-bunny'); ?></h3>
-            <p><strong><?php esc_html_e('Note:', 'nexoffload-for-bunny'); ?></strong> <?php esc_html_e('AVIF, WebP, SVG are the only eligible for migration.', 'nexoffload-for-bunny'); ?></p>
-            
-            <h3><?php esc_html_e('Batch Migration', 'nexoffload-for-bunny'); ?></h3>
-            
-            <p><?php esc_html_e('To migrate all your optimized media files:', 'nexoffload-for-bunny'); ?></p>
-            
-            <ol>
-                <li><?php esc_html_e('Go to the Media Manager > Migration tab', 'nexoffload-for-bunny'); ?></li>
-                <li><?php esc_html_e('Click the "Migrate All Optimized Files" button', 'nexoffload-for-bunny'); ?></li>
-                <li><?php esc_html_e('Monitor the progress in the migration log', 'nexoffload-for-bunny'); ?></li>
-            </ol>
-            
-            <h3><?php esc_html_e('URL Rewriting', 'nexoffload-for-bunny'); ?></h3>
-            
-            <p><?php esc_html_e('After migration, the plugin automatically rewrites media URLs to serve files from your Bunny.net CDN.', 'nexoffload-for-bunny'); ?></p>
-            
             <?php elseif ($active_tab === 'faq'): ?>
             
             <h2><?php esc_html_e('Frequently Asked Questions', 'nexoffload-for-bunny'); ?></h2>
             
             <div class="nofb-faq">
                 <div class="nofb-faq-item">
-                    <h3><?php esc_html_e('Can I use Bunny Media Offload with other CDN plugins?', 'nexoffload-for-bunny'); ?></h3>
-                    <div class="nofb-faq-content">
-                        <p><?php esc_html_e('This is a storage solution, conflicts are unlikely but backups are recommended and testing in a staging environment.', 'nexoffload-for-bunny'); ?></p>
-                    </div>
-                </div>
-                
-                <div class="nofb-faq-item">
-                    <h3><?php esc_html_e('Will my original files be deleted after migration?', 'nexoffload-for-bunny'); ?></h3>
-                    <div class="nofb-faq-content">
-                        <p><?php esc_html_e('Yes, because this plugin offloads and changes the URL and not synchronizes it.', 'nexoffload-for-bunny'); ?></p>
-                    </div>
-                </div>
-                
-                <div class="nofb-faq-item">
-                    <h3><?php esc_html_e('What happens if I deactivate the plugin?', 'nexoffload-for-bunny'); ?></h3>
-                    <div class="nofb-faq-content">
-                        <p><?php esc_html_e('The file URL will remain the same, that is, local files will remain local and those in bunny storage will remain in bunny storage (when offloading/migrating) there will no longer be a local copy.', 'nexoffload-for-bunny'); ?></p>
-                    </div>
-                </div>
-                
-                <div class="nofb-faq-item">
                     <h3><?php esc_html_e('How does the optimization process affect image quality?', 'nexoffload-for-bunny'); ?></h3>
                     <div class="nofb-faq-content">
                         <p><?php esc_html_e('The plugin uses high-quality compression algorithms that reduce file size while maintaining visual quality. In most cases, the difference is imperceptible to the human eye.', 'nexoffload-for-bunny'); ?></p>
-                    </div>
-                </div>
-                
-                <div class="nofb-faq-item">
-                    <h3><?php esc_html_e('Do I need a Bunny.net account?', 'nexoffload-for-bunny'); ?></h3>
-                    <div class="nofb-faq-content">
-                        <p><?php esc_html_e('Yes, you need a Bunny.net account with Edge Storage enabled to use the migration features. However, you can still use the optimization features without a Bunny.net account.', 'nexoffload-for-bunny'); ?></p>
-                    </div>
-                </div>
-                
-                <div class="nofb-faq-item">
-                    <h3><?php esc_html_e('Can I migrate only specific files?', 'nexoffload-for-bunny'); ?></h3>
-                    <div class="nofb-faq-content">
-                        <p><?php esc_html_e('Currently, the plugin only supports batch migration of all optimized files. Selective migration will be available in a future update.', 'nexoffload-for-bunny'); ?></p>
                     </div>
                 </div>
             </div>
